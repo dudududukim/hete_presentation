@@ -31,6 +31,9 @@
   .why { font-weight:800; }
   code { font-family:"SF Mono",Consolas,Menlo,monospace; font-size:27px;
          border:1px solid #000; padding:1px 7px; }
+  .codebox { font-family:"SF Mono",Consolas,Menlo,monospace; font-size:19px; line-height:1.5;
+             border:2px solid #000; padding:11px 16px; margin:10px 0 8px; white-space:pre;
+             overflow-x:auto; }
   table { border-collapse:collapse; width:100%; margin:20px 0; font-size:28px; }
   th, td { border:2px solid #000; padding:11px 14px; text-align:center; }
   th { font-weight:800; }
@@ -99,6 +102,7 @@
     .ann li { font-size:13.5px; margin:7px 0; } .ann .tk { padding:1px 6px; }
     table.tight { font-size:14px; } table.tight th, table.tight td { padding:3px 6px; }
     .slide.dense li { font-size:16px; margin:6px 0; } .slide.dense .key { font-size:16px; }
+    .codebox { font-size:12px; line-height:1.45; padding:7px 10px; margin:6px 0; }
   }
 </style>
 </head>
@@ -201,11 +205,14 @@
   <ul>
     <li><span class="why">문제:</span> 중간발표 NBV는 <b>도착지 정보이득 ÷ 거리</b>만 봄.
       ① 먼 unknown 포켓을 거리페널티가 과하게 눌러 <b>영영 안 감</b>. ② 탐색(NBV)과 순찰(LRW)이 <b>별도 로직</b>이라 전환 경계에서 비효율.</li>
-    <li><span class="why">해결:</span> <code>pick_coverage_target</code> — 단일 점수
-      <b>유효 미관측도 ÷ 경로비용</b>으로 탐색·순찰 통합.
+    <li><span class="why">해결:</span> <code>pick_coverage_target</code> — 미탐색과 "오래 안 본 known"을 <b>한 점수</b>로 함께 봄:
+<pre class="codebox">for (5×5 시야 셀) {
+  if (UNKNOWN)    gain += 1.0;                 // 미탐색
+  else if (EMPTY) gain += sqrt(stale / tick);  // 오래 안 본 known (벽·점령 = 0)
+}
+score = gain / pow(max(cost_norm, floor), dist_pow);  // 이득 ÷ 경로비용^거리페널티</pre>
       <ul>
-        <li>5×5 시야의 가중합: 미탐색 = 1.0, 오래 안 본 known = (안 본 시간)/현재, 점령·벽 = 0.</li>
-        <li>→ 초기엔 미탐색 탐색, 후반엔 오래 안 본 곳 재관측으로 <b>자연 전환</b> — 드론이 평생 탐색만 하다 죽지 않음.</li>
+        <li>→ 초기엔 미탐색 탐색, 후반엔 오래 안 본 곳 재관측으로 <b>자연 전환</b>.</li>
       </ul>
     </li>
     <li><span class="why">regime 적응:</span> 맵크기·관측 벽비율·커버리지로 상황 감지 →
