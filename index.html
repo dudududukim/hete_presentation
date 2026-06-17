@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HC-MRTA 스케줄러 — 최종 발표 (중간발표 대비 개선)</title>
+<style>
+  :root { --fg:#000; --bg:#fff; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; background:var(--bg); color:var(--fg); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue",
+                 "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    font-size: 34px; line-height: 1.55; -webkit-font-smoothing: antialiased;
+  }
+  #bar { position:fixed; top:0; left:0; height:6px; background:#000; width:0%; transition:width .15s; z-index:10; }
+  #count { position:fixed; top:14px; right:24px; font-size:26px; color:#000; z-index:10; }
+  .slide { display:none; min-height:100vh; padding:48px 84px 96px; max-width:1600px; margin:0 auto; }
+  .slide.active { display:block; }
+  h1 { font-size:74px; line-height:1.18; margin:0 0 22px; font-weight:800; }
+  h2 { font-size:50px; line-height:1.22; margin:0 0 26px; font-weight:800;
+       padding-bottom:14px; border-bottom:5px solid #000; }
+  .sub { font-size:42px; font-weight:600; margin:8px 0; }
+  .meta { font-size:29px; margin-top:42px; }
+  ul { margin:12px 0 0; padding-left:36px; }
+  li { font-size:32px; margin:15px 0; }
+  li ul li { font-size:27px; margin:9px 0; }
+  .big { font-size:42px; font-weight:700; }
+  .key { border:3px solid #000; padding:20px 26px; margin:26px 0; font-size:32px; }
+  .note { font-size:27px; color:#000; margin-top:24px; }
+  .why { font-weight:800; }
+  code { font-family:"SF Mono",Consolas,Menlo,monospace; font-size:27px;
+         border:1px solid #000; padding:1px 7px; }
+  table { border-collapse:collapse; width:100%; margin:20px 0; font-size:28px; }
+  th, td { border:2px solid #000; padding:11px 14px; text-align:center; }
+  th { font-weight:800; }
+  td.l, th.l { text-align:left; }
+  tr.hi td { font-weight:800; }
+  table.tight { font-size:23px; margin:10px 0; }
+  table.tight th, table.tight td { padding:5px 11px; }
+  table.ov { table-layout:fixed; }
+  table.ov td, table.ov th { word-break:keep-all; overflow-wrap:break-word; vertical-align:top; }
+  table.ov th:nth-child(1), table.ov td:nth-child(1) { width:21%; }
+  table.ov th:nth-child(2), table.ov td:nth-child(2),
+  table.ov th:nth-child(3), table.ov td:nth-child(3) { width:39.5%; }
+  .emo { font-size:36px; }
+  .vids { display:flex; gap:34px; justify-content:center; align-items:flex-start; margin:16px 0; }
+  .vidbox { text-align:center; }
+  video.demo { height:49vh; max-height:520px; width:auto; max-width:46vw;
+               border:3px solid #000; background:#000; display:block; }
+  .vidcap { font-size:25px; font-weight:600; margin-top:9px; }
+  .demo2 { display:flex; gap:42px; align-items:center; margin-top:6px; }
+  .demo-txt { flex:0 0 610px; }
+  .demo-vid { flex:1; display:flex; justify-content:center; }
+  video.big { height:72vh; max-height:760px; width:auto; max-width:100%;
+              border:3px solid #000; background:#000; display:block; }
+  .anh { font-size:27px; font-weight:800; margin:0 0 8px; }
+  .ann { list-style:none; padding:0; margin:0; }
+  .ann li { display:flex; gap:13px; margin:13px 0; font-size:23px; line-height:1.36; }
+  .ann .tk { flex:0 0 auto; font-weight:800; border:2px solid #000; padding:1px 9px;
+             align-self:flex-start; white-space:nowrap; }
+  .ann .tk.rd { color:#d11; border-color:#d11; }
+  .slide.dense li { font-size:28px; margin:11px 0; }
+  .slide.dense .key { font-size:28px; }
+  .center { text-align:center; }
+  .lead { font-size:42px; font-weight:700; margin:28px 0; }
+  .road { font-size:30px; margin-top:30px; }
+  .road b { display:inline-block; border:2px solid #000; padding:4px 14px; margin:5px 7px 5px 0; }
+  #nav { position:fixed; bottom:24px; right:28px; z-index:10; }
+  button { font-size:26px; font-family:inherit; background:#fff; color:#000;
+           border:3px solid #000; padding:9px 22px; margin-left:10px; cursor:pointer; }
+  button:active { background:#000; color:#fff; }
+  .title-wrap { display:flex; flex-direction:column; justify-content:center; min-height:72vh; }
+  .legend { font-size:30px; margin:10px 0 0; }
+  .legend span { display:inline-block; margin-right:32px; }
+  .sw { display:inline-block; width:30px; height:20px; vertical-align:middle;
+        margin-right:9px; border:2px solid #000; }
+  .sw.v0 { background:#fff; }
+  .sw.imp { background:#000; }
+  @media print {
+    @page { size: A4 landscape; margin: 12mm; }
+    .slide { display:block; page-break-after:always; page-break-inside:avoid;
+             min-height:auto; padding:28px 52px; max-width:none; }
+    #bar,#count,#nav { display:none; }
+    .title-wrap { min-height:52vh; }
+    h1 { font-size:42px; } h2 { font-size:29px; margin-bottom:13px; padding-bottom:8px; }
+    .sub { font-size:22px; } .meta { font-size:16px; }
+    li { font-size:16.5px; margin:6px 0; } li ul li { font-size:14.5px; margin:4px 0; }
+    table { font-size:14.5px; margin:9px 0; } th,td { padding:4px 6px; }
+    .key { font-size:16.5px; padding:10px 14px; margin:11px 0; } .note { font-size:14px; }
+    .lead { font-size:21px; margin:10px 0; } .road { font-size:15.5px; } .legend { font-size:15.5px; }
+    .emo { font-size:19px; } code { font-size:14.5px; } .big { font-size:21px; }
+    video.demo { height:auto; width:44%; max-width:44%; max-height:none; }
+    .vidcap { font-size:15px; }
+    .demo2 { gap:22px; align-items:flex-start; }
+    .demo-txt { flex:0 0 46%; }
+    video.big { height:auto; width:auto; max-height:62vh; max-width:52%; }
+    .anh { font-size:15px; margin-bottom:5px; }
+    .ann li { font-size:13.5px; margin:7px 0; } .ann .tk { padding:1px 6px; }
+    table.tight { font-size:14px; } table.tight th, table.tight td { padding:3px 6px; }
+    .slide.dense li { font-size:16px; margin:6px 0; } .slide.dense .key { font-size:16px; }
+  }
+</style>
+</head>
+<body>
+<div id="bar"></div>
+<div id="count"></div>
+
+<!-- 1 — Title -->
+<section class="slide active">
+  <div class="title-wrap">
+    <h1>HC-MRTA 이종 다중로봇<br>태스크 할당 스케줄러</h1>
+    <div class="sub">최종 발표 — 중간발표(midterm) 대비 개선</div>
+    <div class="meta">
+      부분관측 격자맵 · 동적 태스크 발견·완료<br>
+      동일 시뮬레이터 · 동일 시드 paired A/B (midterm vs 최종) · 2026-06-17
+    </div>
+  </div>
+</section>
+
+<!-- 2 — 중간발표 알고리즘 한눈에 (단계 × 로봇) -->
+<section class="slide">
+  <h2>중간발표 알고리즘 — 단계 × 로봇</h2>
+  <table class="ov">
+    <tr>
+      <th class="l">로봇 (6대)</th>
+      <th class="l">Phase 1 — 탐색 (맵 UNKNOWN)</th>
+      <th class="l">Phase 2 — 순찰 (맵 전부 KNOWN)</th>
+    </tr>
+    <tr>
+      <td class="l"><span class="emo">🚁</span> 드론 ×2<br>(탐색 전용, 5×5 시야)</td>
+      <td class="l">Frontier 수집 → <b>NBV</b> (정보이득 ÷ 거리) 최대 frontier로 이동.
+        드론 간 <code>reserved</code>로 영역 분리</td>
+      <td class="l"><b>관측 히스토리 LRW</b> — 가장 오래 안 본
+        5×5 영역 재방문 (새 태스크 출현 감지)</td>
+    </tr>
+    <tr>
+      <td class="l"><span class="emo">🚜</span> 캐터필러 ×2 (이동비 ~300)<br>
+        <span class="emo">🚗</span> 휠 ×2 (이동비 ~450)</td>
+      <td class="l"><b>typeI</b>: UNKNOWN 통행가정 D* Lite →
+        모든 (태스크,워커) 쌍 <b>글로벌 min-cost greedy 매칭</b>.
+        할 일 없으면 <b>HOLD</b>(에너지 보존)</td>
+      <td class="l"><b>typeII</b>: known-only D* Lite로
+        배정 태스크에 직접 이동·수행.
+        switching penalty로 재배치 억제</td>
+    </tr>
+  </table>
+  <div class="key">기반: <b>D* Lite</b>(목적지 기준 g-value 경로계획) ·
+    맵이 전부 known(또는 frontier 소진)이면 <b>Phase 1 → Phase 2 자동 전환</b>.
+    두 워커 종류는 같은 절차, <b>이동비용만 다름</b>.</div>
+</section>
+
+<!-- 3 — 문제 정의 · 측정 방법 -->
+<section class="slide">
+  <h2>문제 정의 · 측정 방법</h2>
+  <ul>
+    <li>부분관측 격자맵에서 <b>동적으로 출현</b>하는 태스크를 발견·완료. 지표 = <b>완료율</b>(완료/전체).</li>
+    <li>로봇 6대(이종): <b>드론 2대</b>(탐색 전용·수행 불가) · <b>지상 4대</b>(태스크 실행, 이동비용 4–6배 높음).</li>
+    <li>태스크는 <b>관측되어야</b> 할당·수행 가능 → <b>발견이 병목</b>.</li>
+    <li>제약: TIME_MAX · 태스크 총수 · 에너지를 <b>사전에 모름</b> → 런타임 관측값만으로 동작.</li>
+  </ul>
+  <div class="key">측정 = 중간발표본과 최종본을 <b>동일 <code>bench_grid</code> 하네스</b>(제공 <code>main.cpp</code> 시뮬 루프 충실 재현)·<b>동일 시드</b>로 paired 비교.
+    <code>simulator</code>·<code>main</code> 완전 동일, <b><code>schedular</code>만 교체</b> → 차이는 순수 알고리즘.</div>
+  <div class="road">발표 구성 &nbsp;
+    <b>1. 중간발표 bench</b> <b>2. 추가 알고리즘과 이유</b> <b>3. 개선 결과</b> <b>4. 시도했던 방법들</b> <b>5. 한계</b></div>
+</section>
+
+<!-- 4 — §1 중간발표 bench (맵 크기) -->
+<section class="slide">
+  <h2>1. 중간발표 버전 — bench 결과 (맵 크기)</h2>
+  <p class="lead">중간발표본을 최종본과 동일한 하네스로 재측정</p>
+  <table>
+    <tr><th class="l">맵 크기</th><th>완료 task</th><th>발견 task</th><th>완료율</th><th>탐색률 known%</th></tr>
+    <tr><td class="l">20×20 (기본)</td><td>8.3 / 16</td><td>10.4 / 16</td><td>52.0%</td><td>91.0%</td></tr>
+    <tr class="hi"><td class="l">40×40</td><td>6.1 / 16</td><td>6.5 / 16</td><td>38.1%</td><td>60.2%</td></tr>
+    <tr class="hi"><td class="l">60×60</td><td>4.2 / 16</td><td>4.4 / 16</td><td>26.5%</td><td>41.2%</td></tr>
+  </table>
+  <div class="key">맵이 커질수록 <b>발견 task 수가 곧 완료 task 수</b>로 수렴
+    (40×40: 발견 6.5 ≈ 완료 6.1 / 60×60: 4.4 ≈ 4.2) → <b>발견되면 거의 완료됨, 병목은 순수 발견</b>.
+    탐색률(known%)도 동반 하락 — 드론 2대로 n² 맵을 제한시간에 못 훑음.</div>
+</section>
+
+<!-- 5 — §1 중간발표 bench (시나리오) -->
+<section class="slide">
+  <h2>1. 중간발표 버전 — bench 결과 (시나리오)</h2>
+  <table>
+    <tr><th class="l">시나리오 (단일 변수만 변경)</th><th>완료 task</th><th>발견 task</th><th>완료율</th></tr>
+    <tr><td class="l">벽 5% (개활)</td><td>9.1 / 16</td><td>10.7 / 16</td><td>57.1%</td></tr>
+    <tr class="hi"><td class="l">벽 40% (밀집)</td><td>4.6 / 16</td><td>7.6 / 16</td><td>28.6%</td></tr>
+    <tr class="hi"><td class="l">로봇 4대 (적음)</td><td>5.0 / 16</td><td>9.8 / 16</td><td>31.0%</td></tr>
+    <tr><td class="l">로봇 12대 (많음)</td><td>11.1 / 16</td><td>11.4 / 16</td><td>69.5%</td></tr>
+    <tr><td class="l">task 총 4 (적음)</td><td>2.6 / 4</td><td>2.7 / 4</td><td>64.5%</td></tr>
+    <tr><td class="l">task 총 32 (많음)</td><td>12.5 / 32</td><td>20.2 / 32</td><td>39.0%</td></tr>
+    <tr><td class="l">10×10 (소형)</td><td>8.6 / 16</td><td>12.7 / 16</td><td>53.8%</td></tr>
+  </table>
+  <div class="key">발견 task와 완료 task의 <b>차이가 곧 2차 병목</b>:
+    벽40%(발견 7.6·완료 4.6)는 벽이 격리해 <b>도달 불가</b>, 로봇4(발견 9.8·완료 5.0)는 <b>일손 부족</b>,
+    task32(발견 20.2·완료 12.5)는 <b>시간 부족</b>. 그 외엔 발견이 병목.</div>
+</section>
+
+<!-- 6 — §2 드론 ① 연속 커버리지 스코어러 -->
+<section class="slide">
+  <h2>2. 추가 알고리즘 · 드론 ① — 연속 커버리지 스코어러</h2>
+  <ul>
+    <li><span class="why">문제:</span> 중간발표 NBV는 <b>도착지 정보이득 ÷ 거리</b>만 봄.
+      ① 먼 unknown 포켓을 거리페널티가 과하게 눌러 <b>영영 안 감</b>. ② 탐색(NBV)과 순찰(LRW)이 <b>별도 로직</b>이라 전환 경계에서 비효율.</li>
+    <li><span class="why">해결:</span> <code>pick_coverage_target</code> — 단일 점수
+      <b>유효 미관측도 ÷ 경로비용</b>으로 탐색·순찰 통합.
+      <ul>
+        <li>5×5 시야의 가중합: 미탐색 = 1.0, 오래 안 본 known = (안 본 시간)/현재, 점령·벽 = 0.</li>
+        <li>→ 초기엔 미탐색 탐색, 후반엔 오래 안 본 곳 재관측으로 <b>자연 전환</b> — 드론이 평생 탐색만 하다 죽지 않음.</li>
+      </ul>
+    </li>
+    <li><span class="why">regime 적응:</span> 맵크기·관측 벽비율·커버리지로 상황 감지 →
+      거리페널티 지수(대형·개활 = <code>cost^0.5</code>로 <b>먼 포켓까지 도달</b>) · 다양성 floor 자동.
+      <b>맵크기 하드코딩이 아닌 런타임 신호</b> → 임의 맵에 일반화.</li>
+  </ul>
+  <div class="key">발견이 병목인데 중간발표 NBV는 <b>먼 영역을 구조적으로 못 감</b> → 거리페널티를 상황별로 완화.</div>
+</section>
+
+<!-- 7 — §2 드론 ② reserve-drone -->
+<section class="slide">
+  <h2>2. 추가 알고리즘 · 드론 ② — reserve-drone 시간 직렬화</h2>
+  <ul>
+    <li><span class="why">문제:</span> 중간발표는 두 드론이 <b>동시 탐색</b> → 둘 다 비슷한 시기에 에너지 ~100% 소진·사망.
+      그런데 태스크 절반은 <b>후반에 출현</b>(late-spawn) → 그땐 드론이 이미 죽어 <b>센서 0 → 후기 태스크 영영 미발견</b>.</li>
+    <li><span class="why">해결:</span> 드론 2대 중 1대를 <code>late_start</code>까지 <b>0에너지로 보류(hold)</b> → 나머지 1대가 전반 탐색.
+      <code>late_start</code>에 release → 후반 커버. 두 드론을 <b>시간축으로 직렬화</b>해 센서 생존 기간을 늘림.</li>
+    <li><span class="why">타이밍 유도:</span> <code>late_start = TIME_MAX × 3/16</code>.
+      TIME_MAX은 인자로 안 주어짐 → <b>관측한 드론 초기 에너지 ÷ 6로 역산</b>(드론 init 에너지 = TIME_MAX×6).
+      오라클 없음, time 배율이 바뀌어도 자동 보정.</li>
+    <li><span class="why">왜 3/16:</span> 너무 일찍 풀면 두 드론이 같은 시기에 죽어 후반 공백, 너무 늦으면 reserve가 노는 시간 과다.
+      측정상 <b>3/16이 최적</b>.</li>
+  </ul>
+  <div class="key">핵심은 <b>"언제 센서를 켜 두나"</b>(타이밍) — 후기 spawn 태스크를 볼 눈을 후반까지 남김.</div>
+</section>
+
+<!-- 8 — §2 워커 ① 보조 발견 -->
+<section class="slide">
+  <h2>2. 추가 알고리즘 · 워커 ① — 유휴 워커의 보조 발견 (드론 전멸 시 가속)</h2>
+  <ul>
+    <li><span class="why">문제:</span> 워커는 이동비용 4–6배라 탐색 ROI 음수 → 중간발표는 유휴 워커 <b>정지(HOLD)</b>(맞는 선택).
+      하지만 갈 수 있는 태스크가 없어 <b>오래 멈춰 있는</b> 워커는 그냥 노는 <b>무한에너지 센서 낭비</b>(워커는 거의 안 죽고, 시뮬은 시간이 다 차야 끝남).</li>
+    <li><span class="why">해결:</span> 일정 시간 이상 멈춰 있고 인근이 <b>오래(≥250 tick) 관측 안 됐으면</b> 가까운(≤3셀) 미관측 셀로 <b>살짝 보조 이동</b>
+      → 이동 중 <b>5–9셀 부수 관측</b>으로 뒤늦게 생긴 태스크 발굴. 한 tick에 1명만, 에너지 30% 남겨 완료 임무 보호.</li>
+    <li><span class="why">드론 전멸 시 가속:</span> 드론이 살아 있을 땐 멈춤 임계 <b>65 tick</b>(완료 임무 거의 방해 0).
+      드론이 모두 소진되면 워커가 <b>유일한 센서</b>라 <b>30 tick</b>으로 발견을 앞당김. 맵 크기로 나누지 않고 <b>실행 중 상태로만 판단</b> → 일반화.</li>
+  </ul>
+  <div class="key">탐색이 손해인 워커를 <b>오래 멈춰 있을 때만</b> 발견에 투입 → 일반화되는 <b>첫 양수 워커 레버</b>(전 맵 회귀 0).</div>
+</section>
+
+<!-- 9 — §2 워커 ② 미탐색 직행 · 선점 · 게이트 -->
+<section class="slide">
+  <h2>2. 추가 알고리즘 · 워커 ② — 미탐색 직행 · 선점 · 게이트</h2>
+  <ul>
+    <li><b>미탐색 경계(frontier) 직행</b>: 보조 이동 시 <b>미탐색이 절반 넘게</b> 남았으면, 이미 본 영역 대신 예산(8셀) 안의 <b>미탐색 경계</b>로 곧장
+      → <span class="why">왜:</span> 드론이 에너지로 못 닿은 <b>새 영역을 워커가 직접 발굴</b>.</li>
+    <li><b>중간 재배치 선점</b> (10% 이상 더 싸야 교체): 이미 출발한 워커의 태스크를,
+      놀고 있는 더 가까운 워커가 <b>10% 이상 싸게</b> 끝낼 수 있으면 가져오고 기존 워커는 풀어 줌
+      → <span class="why">왜:</span> 이동 중 워커의 태스크 독점 해소. 10% 여유를 둬 <b>오락가락·좁은 길 충돌 억제</b>.</li>
+    <li><b>에너지 실행가능 검사</b>(잔여 97% 기준): 못 끝낼 태스크에 워커가 묶이는 것 방지.</li>
+    <li><b>왕복 순회(lawnmower) 보강</b>: 예비 드론 투입 뒤 빠진 영역을 고르게 덮음.</li>
+  </ul>
+  <div class="key">워커 추가의 공통 원리: <b>유휴 무한에너지 센서를 발견에 투입하되,
+    모든 발동을 런타임 게이트로 묶어 완료 임무를 해치지 않게</b>.</div>
+</section>
+
+<!-- 10 — §3 개선 차트 (완료율) -->
+<section class="slide">
+  <h2>3. 성능 개선 — 완료율 (midterm → 최종)</h2>
+  <div id="chart"></div>
+  <div class="legend center">
+    <span><span class="sw v0"></span>중간발표 (midterm)</span>
+    <span><span class="sw imp"></span>최종 (final)</span>
+    <span>막대 위 숫자 = Δpp</span>
+  </div>
+  <div class="key center">동일 시드 paired · <b>10개 bench 전부 개선, 회귀 0</b> · 발견이 병목인 맵일수록 이득↑ (task 수는 다음 장)</div>
+</section>
+
+<!-- 11 — §3 개선 수치 (task 수 명시) -->
+<section class="slide">
+  <h2>3. 성능 개선 — 완료·발견 task 수 (동일 시드)</h2>
+  <table class="tight">
+    <tr><th class="l">bench</th><th>완료 task&nbsp; mid → fin</th><th>발견 task&nbsp; mid → fin</th><th>완료율 Δ</th></tr>
+    <tr><td class="l">기본 20×20</td><td>8.3 → 9.5</td><td>10.4 → 12.2</td><td>+7.2pp</td></tr>
+    <tr><td class="l">40×40</td><td>6.1 → 7.1</td><td>6.5 → 8.2</td><td>+6.2</td></tr>
+    <tr class="hi"><td class="l">60×60</td><td>4.2 → 5.5</td><td>4.4 → 6.1</td><td>+7.9</td></tr>
+    <tr><td class="l">벽 5%</td><td>9.1 → 10.6</td><td>10.7 → 12.8</td><td>+9.2</td></tr>
+    <tr><td class="l">벽 40%</td><td>4.6 → 5.6</td><td>7.6 → 9.4</td><td>+6.2</td></tr>
+    <tr><td class="l">로봇 4</td><td>5.0 → 5.6</td><td>9.8 → 11.6</td><td>+4.3</td></tr>
+    <tr class="hi"><td class="l">로봇 12</td><td>11.1 → 13.7</td><td>11.4 → 14.1</td><td>+16.0</td></tr>
+    <tr class="hi"><td class="l">task 총 4</td><td>2.6 → 3.1</td><td>2.7 → 3.3</td><td>+14.2</td></tr>
+    <tr><td class="l">task 총 32</td><td>12.5 → 13.9</td><td>20.2 → 23.7</td><td>+4.3</td></tr>
+    <tr class="hi"><td class="l">10×10</td><td>8.6 → 10.4</td><td>12.7 → 14.8</td><td>+11.1</td></tr>
+  </table>
+  <div class="key center">평균 <span class="big">+8.7pp</span> · /16 맵 8종 평균 <b>완료 +1.4 task · 발견 +2.0 task</b>
+    → <b>발견 task가 늘어 완료 task가 따라 늚</b> (개선의 출처 = 발견).</div>
+</section>
+
+<!-- 12 — §3 맵 cover력 (드론 탐색률 known%) -->
+<section class="slide">
+  <h2>3. 성능 개선 — 맵 cover력 (드론 탐색률 known%)</h2>
+  <div id="chart2"></div>
+  <div class="legend center">
+    <span><span class="sw v0"></span>중간발표</span>
+    <span><span class="sw imp"></span>최종</span>
+    <span>막대 위 숫자 = Δpp</span>
+  </div>
+  <div class="key center">task 발견이 아닌 <b>맵 자체 cover력</b>(fog 해제 셀 비율). 이득은 <b>큰·고밀도 맵에 집중</b>:
+    40×40 <b>+6.5</b> · 60×60 <b>+8.9</b> · 벽40% +4.5pp. 이미 다 덮는 작은 맵(10×10 99.5%)은 거의 0·회귀 없음
+    → reserve-drone·워커 발견이 <b>드론이 못 덮던 영역을 메움</b>.</div>
+</section>
+
+<!-- 13 — §3 map80 OOD 비교 -->
+<section class="slide">
+  <h2>3. 성능 개선 — map80 (학습하지 않은 더 큰 맵)</h2>
+  <p class="lead">스크리닝(20·40·60)에 없던 80×80 맵 — 튜닝 0, 순수 일반화 검증 (400 seeds)</p>
+  <table>
+    <tr><th class="l">80×80 지표</th><th>중간발표</th><th>최종</th><th>Δ</th></tr>
+    <tr><td class="l">완료 task</td><td>3.1 / 16</td><td>4.3 / 16</td><td>+1.3</td></tr>
+    <tr class="hi"><td class="l">완료율</td><td>19.2%</td><td>27.0%</td><td>+7.9pp</td></tr>
+    <tr><td class="l">발견 task</td><td>3.2 / 16</td><td>4.7 / 16</td><td>+1.6</td></tr>
+    <tr class="hi"><td class="l">맵 cover력 (탐색률)</td><td>30.6%</td><td>39.5%</td><td>+8.9pp</td></tr>
+  </table>
+  <div class="key"><b>한 번도 튜닝·검증에 쓰지 않은 더 큰 맵</b>인데도 개선 폭이 그대로 유지 (완료율 +7.9pp · cover +8.9pp).
+    → 추가 알고리즘이 특정 맵에 과적합한 게 아니라 <b>맵이 커져도 일반화</b>됨 (map40·60의 "큰 맵일수록 이득↑" 추세 연장).</div>
+</section>
+
+<!-- 14 — §3 동작 영상 map20 -->
+<section class="slide">
+  <h2>3. 동작 영상 — map 20×20 (seed 123)</h2>
+  <div class="demo2">
+    <div class="demo-txt">
+      <div class="anh">주요 tick (영상 좌하단 카운터와 일치) · 최종 9/16 완료</div>
+      <ul class="ann">
+        <li><span class="tk">t 374</span><span>예비 드론 D3 <b>release</b> (드론 수명의 3/16 지점) — 한 드론을 후반까지 살려 둠</span></li>
+        <li><span class="tk rd">t 546</span><span>유휴 워커 R2가 <b>보조탐색(nudge)</b> 중 늦게 생긴 <b>T8 발견</b> → t 646 직접 완료</span></li>
+        <li><span class="tk rd">t 1013</span><span>탐색률 81%인데 드론 D0가 미탐색 대신 <b>오래 안 본 known 재관측</b>(coverage 점수) → 새 spawn 포착</span></li>
+        <li><span class="tk">t 1211~1965</span><span>late task T13·T9를 reserve 드론·워커가 후반에 추가 발견</span></li>
+      </ul>
+      <div class="note">흰=미탐색(fog) · ✓=완료 · 점선 원=미발견 task · <span style="color:#d11;font-weight:700">빨강 tick</span> = 추가 알고리즘이 작동한 순간</div>
+    </div>
+    <div class="demo-vid">
+      <video class="big" src="default_map20_seed123.mp4" poster="poster_map20.jpg"
+             autoplay loop muted playsinline controls preload="auto"></video>
+    </div>
+  </div>
+</section>
+
+<!-- 15 — §3 동작 영상 map40 -->
+<section class="slide">
+  <h2>3. 동작 영상 — map 40×40 (seed 2024)</h2>
+  <div class="demo2">
+    <div class="demo-txt">
+      <div class="anh">주요 tick (영상 좌하단 카운터와 일치) · 최종 5/16 완료</div>
+      <ul class="ann">
+        <li><span class="tk">t 749</span><span>예비 드론 D3 <b>release</b> (3/16 지점) — 큰 맵일수록 후반 센서 생존이 중요</span></li>
+        <li><span class="tk rd">t 1466</span><span>워커 R5가 <b>보조탐색(nudge)</b> 중 late task <b>T8 발견</b> → t 1524 완료</span></li>
+        <li><span class="tk rd">t 2595</span><span>후반까지 살아남은 <b>reserve 드론 D3</b>가 아주 늦은 T12 발견 → t 3263 완료</span></li>
+        <li><span class="tk">t 2432</span><span>탐색률 65%(미탐색 547칸)인데 드론은 먼 포켓 대신 <b>cover 점수 높은 곳 재관측</b> — 닿는 범위 우선</span></li>
+      </ul>
+      <div class="note">큰 맵은 드론 2대로 다 못 덮어 미탐색이 끝까지 남음 → 워커 보조발견·reserve 드론이 후반 task를 메움</div>
+    </div>
+    <div class="demo-vid">
+      <video class="big" src="default_map40_seed2024.mp4" poster="poster_map40.jpg"
+             autoplay loop muted playsinline controls preload="auto"></video>
+    </div>
+  </div>
+</section>
+
+<!-- 14 — §4 시도했던 방법들 ① 채택 -->
+<section class="slide">
+  <h2>4. 시도했던 방법들 ① — 채택 (측정으로 검증)</h2>
+  <ul>
+    <li><b>reserve-drone release 타이밍 5/16 → 3/16</b>
+      <ul>
+        <li>드론 1대를 <b>일찍부터 놀려</b> 후반 커버리지를 사는 비직관적 타이밍.<br>
+          새 시드 검증 <b>+0.92pp</b>, 발견이 병목인 맵일수록 이득. 3/16이 최적.</li>
+      </ul>
+    </li>
+    <li><b>드론 전멸 시 가속되는 워커 보조 발견</b>
+      <ul>
+        <li>탐색이 손해인 워커를 <b>드론이 다 소진됐을 때만</b> 더 공격적으로(멈춤 임계 65→30 tick) 발견에 투입.<br>
+          <b>첫 일반화 양수</b> 워커 레버 — 전 맵 회귀 0.</li>
+      </ul>
+    </li>
+  </ul>
+  <div class="key">둘 다 <b>"언제 행동하나"(타이밍)</b>를 바꾼 게 통함.<br>
+    <b>"무엇을 최적화"(스코어·비용) 변경은 거의 전부 회귀</b> — 회복 가능한 헤드룸은 타이밍이었음.</div>
+</section>
+
+<!-- 15 — §4 시도했던 방법들 ② 교훈적 기각 -->
+<section class="slide">
+  <h2>4. 시도했던 방법들 ② — 교훈적 기각</h2>
+  <ul>
+    <li><b>드론을 일부러 흩어놓기</b> (서로 밀어내기 · 보로노이 영역분할 · 시작 시 모서리로 고정)
+      <ul>
+        <li>"두 드론이 같은 영역만 판다"는 <b>시각적 직관</b>.<br>
+          측정: 일반화 실패(모서리 고정 시 40×40 <b>−6.77pp</b>).<br>
+          <span class="why">교훈:</span> 드론은 먼 영역을 <b>방치가 아니라 늦게</b> 덮음 — 경로 모양은 완료율과 무관, 병목은 협응이 아니라 <b>에너지로 닿는 범위</b>.</li>
+      </ul>
+    </li>
+    <li><b>먼 영역에 드론 강제 배정</b>
+      <ul>
+        <li>실행 중 "못 닿는 영역"을 감지해 드론을 먼 곳으로 강제 배정.<br>
+          <b>4번 모두 효과 없음</b>.<br>
+          <span class="why">교훈:</span> 가까운 곳부터 훑는 게 <b>물리적 최적</b> — 희소한 드론 에너지를 먼 저밀도에 쓰면 발견 손해.</li>
+      </ul>
+    </li>
+    <li><b>고정 임계값을 실행 중 신호로 대체</b>
+      <ul>
+        <li>고정 임계값 65를 "일반적"인 실행 중 신호로 대체.<br>
+          <b>−2.71pp</b>.<br>
+          <span class="why">교훈:</span> 드물게 <b>고정상수가 원리적 신호보다 더 잘 일반화</b>.</li>
+      </ul>
+    </li>
+  </ul>
+  <div class="key center"><b>새롭다고 다 개선은 아니다.</b> 눈에 띄는 비효율도 막상 재보면 완료율과 무관한 경우가 대부분.</div>
+</section>
+
+<!-- 16 — §5 한계 -->
+<section class="slide dense">
+  <h2>5. 한계 — 더 못 올리는 이유</h2>
+  <ul>
+    <li><b>드론 2대로는 큰 맵을 다 못 본다</b><br>
+      드론 시야가 5×5로 좁아서, 맵이 커지면 정해진 시간 안에 전체를 훑지 못한다.
+      맵이 넓어질수록 못 본 영역이 늘어 완료율이 떨어진다 — <b>알고리즘 문제가 아니라 드론 수·시야의 물리적 한계</b>.</li>
+    <li><b>벽이 너무 많으면 갇힌 공간이 생긴다</b><br>
+      벽이 빽빽하면 맵이 여러 조각으로 끊겨, 아무리 잘 움직여도 들어갈 수 없는 방이 남는다.
+      (벽 40%: 태스크를 7.6개 찾아도 길이 막혀 <b>4.6개만 완료</b>.)</li>
+    <li><b>더 짜낼 수 있는 건 "무엇을 하나"가 아니라 "언제 하나"였다</b><br>
+      점수 매기는 법·비용·일 나누기 등 약 50가지를 바꿔봤지만 대부분 제자리거나 오히려 나빠졌다.
+      드론이 어디를 볼지 고르는 방식은 <b>이미 거의 최선</b>이었다.</li>
+    <li><b>좋아 보이는 결과를 그대로 믿지 않았다</b><br>
+      운 좋은 몇몇 맵에서만 좋아 보이는 경우가 많아서,
+      <b>새로운 맵 2000개 이상에서 한 곳도 나빠지지 않을 때만</b> 진짜 개선으로 인정했다.</li>
+  </ul>
+  <div class="key">큰 맵·벽 많은 맵의 낮은 완료율은 <b>실력 부족이 아니라 드론 수·시야·벽이라는 물리적 한계</b> 때문.
+    더 넘으려면 드론끼리 영역을 나눠 협력하는 식으로 <b>구조 자체를 새로 짜야</b> 한다.</div>
+</section>
+
+<!-- 16 — 결론 · 산출물 -->
+<section class="slide">
+  <h2>결론 · 산출물</h2>
+  <ul>
+    <li>중간발표(기본 맵 완료 <b>8.3 / 16, 52.0%</b>) 위에 추가 서브시스템(regime 스코어러·reserve-drone·워커 발견·선점) 전체 적용
+      → 기본 맵 완료 <b>9.5 / 16, 59.2% (+7.2pp)</b>, <b>10 bench 회귀 0 · 평균 +8.7pp</b>.</li>
+    <li>개선의 출처 = <b>맵 cover력 + 발견</b>(/16 맵 8종 평균 발견 +2.0 task → 완료 +1.4 task), 할당·실행 아님.</li>
+    <li>방법: 동일 하네스 paired A/B · 무제한 실험 · <b>정직한 기각</b>(여러 시도를 측정으로 기각, 노이즈로 평균 부풀리지 않음).</li>
+    <li>코드: <code>schedular.cpp</code>·<code>schedular.h</code>만 수정, 제공 프레임워크와 정상 빌드·실행(채점환경 Windows 호환).</li>
+  </ul>
+  <div class="key center">제출물: <code>submission_HC_MRTA/</code>
+    (<code>schedular.cpp</code> · <code>schedular.h</code> + 본 발표 <code>presentation.html</code>)</div>
+</section>
+
+<div id="nav">
+  <button onclick="go(-1)">← 이전</button>
+  <button onclick="go(1)">다음 →</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var i = 0;
+  function show(n){
+    i = Math.max(0, Math.min(slides.length-1, n));
+    slides.forEach(function(s,k){ s.classList.toggle('active', k===i); });
+    document.getElementById('bar').style.width = ((i)/(slides.length-1)*100)+'%';
+    document.getElementById('count').textContent = (i+1) + ' / ' + slides.length;
+    window.scrollTo(0,0);
+  }
+  function go(d){ show(i+d); }
+  document.addEventListener('keydown', function(e){
+    if (e.key==='ArrowRight' || e.key===' ' || e.key==='PageDown'){ e.preventDefault(); go(1); }
+    else if (e.key==='ArrowLeft' || e.key==='PageUp'){ e.preventDefault(); go(-1); }
+    else if (e.key==='Home'){ show(0); } else if (e.key==='End'){ show(slides.length-1); }
+  });
+
+  // [라벨, midterm, final]
+  var COMPL = [
+    ['10×10',53.83,64.95], ['기본20',52.02,59.23], ['map40',38.08,44.32],
+    ['map60',26.48,34.40], ['벽5%',57.13,66.33], ['벽40%',28.63,34.85],
+    ['로봇4',30.98,35.25], ['로봇12',69.50,85.47], ['task4',64.52,78.68],
+    ['task32',39.04,43.31]
+  ];
+  var KNOWN = [
+    ['10×10',99.5,99.6], ['기본20',91.0,92.4], ['map40',60.2,66.7],
+    ['map60',41.2,50.1], ['벽5%',94.3,95.2], ['벽40%',66.7,71.2],
+    ['로봇4',89.8,90.5], ['로봇12',98.8,99.3], ['task4',89.4,92.0],
+    ['task32',91.5,92.6]
+  ];
+  function renderBars(id, data, highlight){
+    var el = document.getElementById(id); if (!el || el.dataset.done) return;
+    el.dataset.done = '1';
+    var W=1180, H=360, pad=50, gw=(W-pad*2)/data.length, bw=gw*0.30, maxV=100, ax=H-pad;
+    var s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:1380px">';
+    s+='<line x1="'+pad+'" y1="'+ax+'" x2="'+(W-pad+6)+'" y2="'+ax+'" stroke="#000" stroke-width="2"/>';
+    s+='<line x1="'+pad+'" y1="'+pad+'" x2="'+pad+'" y2="'+ax+'" stroke="#000" stroke-width="2"/>';
+    [0,25,50,75,100].forEach(function(g){
+      var y=ax-(g/maxV)*(ax-pad);
+      s+='<line x1="'+(pad-5)+'" y1="'+y+'" x2="'+pad+'" y2="'+y+'" stroke="#000" stroke-width="2"/>';
+      s+='<text x="'+(pad-9)+'" y="'+(y+6)+'" text-anchor="end" font-size="17" fill="#000">'+g+'</text>';
+    });
+    data.forEach(function(d,k){
+      var cx=pad+gw*k+gw/2;
+      var h0=(d[1]/maxV)*(ax-pad), h1=(d[2]/maxV)*(ax-pad);
+      var x0=cx-bw-3, x1=cx+3;
+      s+='<rect x="'+x0+'" y="'+(ax-h0)+'" width="'+bw+'" height="'+h0+'" fill="#fff" stroke="#000" stroke-width="2"/>';
+      s+='<rect x="'+x1+'" y="'+(ax-h1)+'" width="'+bw+'" height="'+h1+'" fill="#000"/>';
+      s+='<text x="'+(x1+bw/2)+'" y="'+(ax-h1-7)+'" text-anchor="middle" font-size="16" font-weight="700" fill="#000">+'+(d[2]-d[1]).toFixed(1)+'</text>';
+      s+='<text x="'+cx+'" y="'+(ax+24)+'" text-anchor="middle" font-size="15" fill="#000">'+d[0]+'</text>';
+    });
+    if (highlight && highlight.length){
+      var ha=highlight[0], hb=highlight[highlight.length-1];
+      var bx0=pad+gw*ha+gw*0.05, bx1=pad+gw*(hb+1)-gw*0.05;
+      var topv=0; highlight.forEach(function(idx){ topv=Math.max(topv, data[idx][1], data[idx][2]); });
+      var by=ax-(topv/maxV)*(ax-pad)-30, bh=ax-by+5;
+      s+='<rect x="'+bx0+'" y="'+by+'" width="'+(bx1-bx0)+'" height="'+bh+'" fill="none" stroke="#d11" stroke-width="4" rx="6"/>';
+      s+='<text x="'+((bx0+bx1)/2)+'" y="'+(by-9)+'" text-anchor="middle" font-size="18" font-weight="700" fill="#d11">큰 맵에서 이득 집중</text>';
+    }
+    s+='</svg>';
+    el.innerHTML=s;
+  }
+  renderBars('chart', COMPL);   // eager: present in DOM for print/PDF
+  renderBars('chart2', KNOWN, [2,3]);   // map40·map60에 빨간 강조 박스
+  show(0);
+</script>
+</body>
+</html>
